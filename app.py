@@ -41,26 +41,33 @@ def clear_old_entries():
 
 init_db()
 
-# ---------------- BASELINE ----------------
+# ---------------- BASELINE DATA ----------------
 def load_baseline():
     with open("baseline_crowd.csv", newline="", encoding="utf-8") as f:
         return list(csv.DictReader(f))
 
 baseline_data = load_baseline()
 
-# ---------------- LOGIC ----------------
+# ---------------- CORE LOGIC ----------------
 def expected_crowd(location):
     now = datetime.now()
     today = now.strftime("%A")
     hour = now.hour
 
-    today_rows = [r for r in baseline_data if r["location"] == location and r["day"] == today]
-    baseline = 0
+    today_rows = [
+        r for r in baseline_data
+        if r["location"] == location and r["day"] == today
+    ]
 
+    baseline = 0
     if today_rows:
         hours = sorted(int(r["hour"]) for r in today_rows)
         chosen = max([h for h in hours if h <= hour], default=min(hours))
-        baseline = next(int(r["baseline_crowd"]) for r in today_rows if int(r["hour"]) == chosen)
+        baseline = next(
+            int(r["baseline_crowd"])
+            for r in today_rows
+            if int(r["hour"]) == chosen
+        )
 
     conn = sqlite3.connect("data.db")
     registered = conn.execute(
@@ -92,37 +99,128 @@ def best_time(location):
     h = min(hours, key=hours.get)
     return f"{h}:00 – {h+1}:00"
 
-# ---------------- STYLE ----------------
+# ---------------- UI STYLE ----------------
 STYLE = """
 <style>
-body { margin:0; font-family:Segoe UI, sans-serif; background:#f4f6fb; }
-.navbar {
-    background:#1c2333; padding:18px 40px;
-    display:flex; justify-content:space-between; align-items:center;
+body {
+    margin:0;
+    font-family:'Segoe UI', sans-serif;
+    background:#f4f6fb;
 }
-.navbar h1 { color:white; font-size:20px; margin:0; }
-.navbar span { color:#8ea0ff; font-weight:500; }
-.container { max-width:1100px; margin:70px auto; padding:0 20px; }
-.hero { display:grid; grid-template-columns:1.2fr 1fr; gap:40px; align-items:center; }
+.navbar {
+    background:#1c2333;
+    padding:18px 40px;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+}
+.brand {
+    display:flex;
+    align-items:center;
+    gap:12px;
+}
+.brand img { height:34px; }
+.brand h1 {
+    color:white;
+    font-size:20px;
+    margin:0;
+}
+.brand span { color:#8ea0ff; }
+
+.menu {
+    position:relative;
+    display:inline-block;
+    margin-left:30px;
+    color:#cfd6f3;
+    cursor:pointer;
+    font-weight:500;
+}
+.menu-content {
+    display:none;
+    position:absolute;
+    top:30px;
+    background:white;
+    min-width:220px;
+    box-shadow:0 10px 25px rgba(0,0,0,0.15);
+    border-radius:10px;
+    overflow:hidden;
+    z-index:10;
+}
+.menu-content a {
+    display:block;
+    padding:14px 18px;
+    color:#333;
+    text-decoration:none;
+    font-size:14px;
+}
+.menu-content a:hover { background:#f2f4fb; }
+.menu:hover .menu-content { display:block; }
+
+.container {
+    max-width:1100px;
+    margin:70px auto;
+    padding:0 20px;
+}
+.hero {
+    display:grid;
+    grid-template-columns:1.2fr 1fr;
+    gap:40px;
+    align-items:center;
+}
 .hero h2 { font-size:42px; }
 .hero p { font-size:18px; color:#555; }
+
 .btn {
-    padding:14px 26px; border-radius:10px; background:#1f4fd8;
-    color:white; text-decoration:none; font-weight:600; display:inline-block;
+    padding:14px 26px;
+    border-radius:10px;
+    background:#1f4fd8;
+    color:white;
+    text-decoration:none;
+    font-weight:600;
+    display:inline-block;
 }
-.btn.secondary { background:#e4e8ff; color:#1f4fd8; margin-left:10px; }
+.btn.secondary {
+    background:#e4e8ff;
+    color:#1f4fd8;
+    margin-left:10px;
+}
+
 .card {
-    background:white; padding:30px; border-radius:16px;
+    background:white;
+    padding:30px;
+    border-radius:16px;
     box-shadow:0 12px 30px rgba(0,0,0,0.08);
 }
 .card-grid {
-    display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
-    gap:24px; margin-top:50px;
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
+    gap:24px;
+    margin-top:50px;
 }
-select, input { width:100%; padding:14px; margin-top:15px; border-radius:8px; border:1px solid #ccc; }
-.badge { padding:8px 16px; border-radius:20px; color:white; font-weight:600; }
-.green{background:#28a745;} .orange{background:#f0ad4e;} .red{background:#d9534f;}
-footer { margin-top:80px; background:#1c2333; color:#aaa; padding:40px; text-align:center; }
+select, input {
+    width:100%;
+    padding:14px;
+    margin-top:15px;
+    border-radius:8px;
+    border:1px solid #ccc;
+}
+.badge {
+    padding:8px 16px;
+    border-radius:20px;
+    color:white;
+    font-weight:600;
+}
+.green{background:#28a745;}
+.orange{background:#f0ad4e;}
+.red{background:#d9534f;}
+
+footer {
+    margin-top:80px;
+    background:#1c2333;
+    color:#aaa;
+    padding:40px;
+    text-align:center;
+}
 </style>
 """
 
@@ -134,8 +232,31 @@ def home():
     <html><head><title>Q-SMART</title>{STYLE}</head><body>
 
     <div class="navbar">
-        <h1>Q-SMART <span>by UrbanX</span></h1>
-        <div style="color:#cfd6f3">Company | Solutions</div>
+        <div class="brand">
+            <img src="/static/logo.png">
+            <h1>Q-SMART <span>by UrbanX</span></h1>
+        </div>
+        <div>
+            <div class="menu">
+                Company
+                <div class="menu-content">
+                    <a href="#">About UrbanX</a>
+                    <a href="#">Our Vision</a>
+                    <a href="#">Contact</a>
+                </div>
+            </div>
+            <div class="menu">
+                Solutions
+                <div class="menu-content">
+                    <a href="#">Healthcare</a>
+                    <a href="#">Transportation</a>
+                    <a href="#">Public Services</a>
+                    <a href="#">Retail</a>
+                    <a href="#">Education</a>
+                    <a href="#">Religious Places</a>
+                </div>
+            </div>
+        </div>
     </div>
 
     <div class="container">
@@ -152,9 +273,9 @@ def home():
         </div>
 
         <div class="card-grid">
-            <div class="card"><h3>Expected Crowd</h3><p>Calculated from trends + registrations</p></div>
-            <div class="card"><h3>Waiting Time</h3><p>Based on service capacity</p></div>
-            <div class="card"><h3>Best Time</h3><p>Suggested low-crowd hour</p></div>
+            <div class="card"><h3>Expected Crowd</h3><p>Based on trends + registrations</p></div>
+            <div class="card"><h3>Waiting Time</h3><p>Capacity-aware estimation</p></div>
+            <div class="card"><h3>Best Time</h3><p>Lowest crowd hour suggested</p></div>
             <div class="card"><h3>Privacy First</h3><p>No personal data collected</p></div>
         </div>
     </div>
