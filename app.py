@@ -17,7 +17,7 @@ LOCATIONS = [
     "Public Library", "Examination Centre"
 ]
 
-AVG_SERVICE_TIME = 2
+AVG_SERVICE_TIME = 2        # minutes per person
 SERVICE_COUNTERS = 3
 
 # ---------------- DATABASE ----------------
@@ -54,13 +54,20 @@ def expected_crowd(location):
     today = now.strftime("%A")
     hour = now.hour
 
-    today_rows = [r for r in baseline_data if r["location"] == location and r["day"] == today]
-    baseline = 0
+    today_rows = [
+        r for r in baseline_data
+        if r["location"] == location and r["day"] == today
+    ]
 
+    baseline = 0
     if today_rows:
         hours = sorted(int(r["hour"]) for r in today_rows)
-        chosen = max([h for h in hours if h <= hour], default=min(hours))
-        baseline = next(int(r["baseline_crowd"]) for r in today_rows if int(r["hour"]) == chosen)
+        chosen_hour = max([h for h in hours if h <= hour], default=min(hours))
+        baseline = next(
+            int(r["baseline_crowd"])
+            for r in today_rows
+            if int(r["hour"]) == chosen_hour
+        )
 
     conn = sqlite3.connect("data.db")
     registered = conn.execute(
@@ -71,7 +78,9 @@ def expected_crowd(location):
     return baseline + registered
 
 def wait_time(crowd):
-    return int((crowd / SERVICE_COUNTERS) * AVG_SERVICE_TIME) if crowd > 0 else 0
+    if crowd == 0:
+        return 0
+    return int((crowd / SERVICE_COUNTERS) * AVG_SERVICE_TIME)
 
 def crowd_level(crowd):
     if crowd <= 50:
@@ -82,81 +91,105 @@ def crowd_level(crowd):
         return ("High", "red")
 
 def best_time(location):
-    hours = {}
+    hour_map = {}
     for r in baseline_data:
         if r["location"] == location:
             h = int(r["hour"])
             c = int(r["baseline_crowd"])
-            hours[h] = min(hours.get(h, c), c)
-    if not hours:
+            hour_map[h] = min(hour_map.get(h, c), c)
+
+    if not hour_map:
         return "Data unavailable"
-    h = min(hours, key=hours.get)
-    return f"{h}:00 – {h+1}:00"
+
+    best = min(hour_map, key=hour_map.get)
+    return f"{best}:00 – {best+1}:00"
 
 # ---------------- UI STYLE ----------------
 STYLE = """
 <style>
+:root {
+    --primary:#1f4fd8;
+    --dark:#1c2333;
+    --bg:#f4f6fb;
+    --card:#ffffff;
+    --text:#333;
+}
+* { box-sizing:border-box; }
 body {
-    font-family: 'Segoe UI', sans-serif;
-    background:#f2f4f8;
     margin:0;
+    font-family:'Segoe UI', sans-serif;
+    background:var(--bg);
+    color:var(--text);
 }
-.container {
-    max-width:900px;
-    margin:60px auto;
-    background:white;
-    padding:40px;
-    border-radius:14px;
-    box-shadow:0 15px 40px rgba(0,0,0,0.08);
-}
-h1 {
-    color:#1f4fd8;
-    font-size:36px;
-}
-h2 {
-    margin-top:0;
-}
-.nav a {
-    margin-right:20px;
-    text-decoration:none;
-    font-weight:600;
-    color:#1f4fd8;
-}
-.hero {
+.navbar {
+    background:var(--dark);
+    padding:18px 40px;
     display:flex;
     justify-content:space-between;
     align-items:center;
 }
-.hero-text {
-    max-width:500px;
+.navbar h1 {
+    color:white;
+    font-size:22px;
+    margin:0;
+}
+.navbar a {
+    color:#cfd6f3;
+    margin-left:20px;
+    text-decoration:none;
+    font-weight:500;
+}
+.container {
+    max-width:1100px;
+    margin:60px auto;
+    padding:0 20px;
+}
+.hero {
+    display:grid;
+    grid-template-columns:1.2fr 1fr;
+    gap:40px;
+    align-items:center;
+}
+.hero h2 {
+    font-size:42px;
+    margin:0;
 }
 .hero p {
-    color:#555;
     font-size:18px;
+    color:#555;
+    margin:20px 0;
 }
 .btn {
     display:inline-block;
-    margin-top:20px;
-    padding:12px 22px;
-    background:#1f4fd8;
+    padding:14px 26px;
+    border-radius:10px;
+    background:var(--primary);
     color:white;
     text-decoration:none;
-    border-radius:8px;
     font-weight:600;
+    margin-right:12px;
+}
+.btn.secondary {
+    background:#e4e8ff;
+    color:var(--primary);
 }
 .card-grid {
     display:grid;
-    grid-template-columns:repeat(auto-fit, minmax(220px,1fr));
-    gap:20px;
-    margin-top:30px;
+    grid-template-columns:repeat(auto-fit,minmax(240px,1fr));
+    gap:24px;
+    margin-top:70px;
 }
 .card {
-    background:#f9fafc;
-    padding:20px;
-    border-radius:12px;
+    background:var(--card);
+    padding:26px;
+    border-radius:16px;
+    box-shadow:0 12px 30px rgba(0,0,0,0.08);
+}
+.card h3 {
+    margin-top:0;
 }
 .badge {
-    padding:6px 14px;
+    padding:8px 16px;
     border-radius:20px;
     font-weight:600;
     color:white;
@@ -165,10 +198,19 @@ h2 {
 .green { background:#28a745; }
 .orange { background:#f0ad4e; }
 .red { background:#d9534f; }
+footer {
+    margin-top:80px;
+    padding:40px;
+    background:#1c2333;
+    color:#aaa;
+    text-align:center;
+}
 select, input {
-    padding:10px;
-    margin-top:10px;
     width:100%;
+    padding:12px;
+    margin-top:10px;
+    border-radius:8px;
+    border:1px solid #ccc;
 }
 </style>
 """
@@ -178,17 +220,61 @@ select, input {
 def home():
     clear_old_entries()
     return f"""
-    <html><head><title>Q-SMART</title>{STYLE}</head><body>
+    <html>
+    <head><title>Q-SMART</title>{STYLE}</head>
+    <body>
+
+    <div class="navbar">
+        <h1>Q-SMART</h1>
+        <div>
+            <a href="/">Home</a>
+            <a href="/join">Join Queue</a>
+            <a href="/status">Check Status</a>
+        </div>
+    </div>
+
     <div class="container">
         <div class="hero">
-            <div class="hero-text">
-                <h1>Q-SMART</h1>
-                <p>Smart Crowd Prediction & Queue Management System</p>
-                <a class="btn" href="/join">Join Queue</a>
-                <a class="btn" style="background:#555" href="/status">Check Status</a>
+            <div>
+                <h2>Experience Smarter Crowd Planning</h2>
+                <p>
+                    Predict queues, avoid peak hours, and plan visits efficiently
+                    using historical trends and real-time registrations.
+                </p>
+                <a class="btn" href="/status">Check Crowd Status</a>
+                <a class="btn secondary" href="/join">Join Queue</a>
+            </div>
+            <div>
+                <img src="https://illustrations.popsy.co/gray/work-from-home.svg" width="100%">
             </div>
         </div>
-    </div></body></html>
+
+        <div class="card-grid">
+            <div class="card">
+                <h3>📊 Expected Crowd</h3>
+                <p>Calculated using historical patterns + registered users.</p>
+            </div>
+            <div class="card">
+                <h3>⏱ Waiting Time</h3>
+                <p>Estimated based on service counters and crowd size.</p>
+            </div>
+            <div class="card">
+                <h3>📅 Best Time</h3>
+                <p>Lowest crowd hour suggested from weekly data.</p>
+            </div>
+            <div class="card">
+                <h3>🔒 Privacy First</h3>
+                <p>No personal data. No hardware. Fully software-based.</p>
+            </div>
+        </div>
+    </div>
+
+    <footer>
+        © 2026 Q-SMART • Smart Crowd Prediction Platform
+    </footer>
+
+    </body>
+    </html>
     """
 
 @app.route("/join")
@@ -233,10 +319,10 @@ def status():
         level, color = crowd_level(crowd)
         output = f"""
         <div class="card-grid">
-            <div class="card"><b>Expected Crowd</b><br><h2>{crowd}</h2></div>
-            <div class="card"><b>Crowd Level</b><br><span class="badge {color}">{level}</span></div>
-            <div class="card"><b>Estimated Waiting Time</b><br><h3>{wait_time(crowd)} min</h3></div>
-            <div class="card"><b>Best Time to Visit</b><br><h3>{best_time(location)}</h3></div>
+            <div class="card"><h3>Expected Crowd</h3><h2>{crowd}</h2></div>
+            <div class="card"><h3>Crowd Level</h3><span class="badge {color}">{level}</span></div>
+            <div class="card"><h3>Waiting Time</h3><h3>{wait_time(crowd)} min</h3></div>
+            <div class="card"><h3>Best Time</h3><h3>{best_time(location)}</h3></div>
         </div>
         """
 
