@@ -54,20 +54,13 @@ def expected_crowd(location):
     today = now.strftime("%A")
     hour = now.hour
 
-    today_rows = [
-        r for r in baseline_data
-        if r["location"] == location and r["day"] == today
-    ]
-
+    today_rows = [r for r in baseline_data if r["location"] == location and r["day"] == today]
     baseline = 0
+
     if today_rows:
         hours = sorted(int(r["hour"]) for r in today_rows)
         chosen = max([h for h in hours if h <= hour], default=min(hours))
-        baseline = next(
-            int(r["baseline_crowd"])
-            for r in today_rows
-            if int(r["hour"]) == chosen
-        )
+        baseline = next(int(r["baseline_crowd"]) for r in today_rows if int(r["hour"]) == chosen)
 
     conn = sqlite3.connect("data.db")
     registered = conn.execute(
@@ -99,22 +92,6 @@ def best_time(location):
     h = min(hours, key=hours.get)
     return f"{h}:00 – {h+1}:00"
 
-# ---------------- DASHBOARD DATA ----------------
-def dashboard_data():
-    data = []
-    for loc in LOCATIONS:
-        crowd = expected_crowd(loc)
-        level, color = crowd_level(crowd)
-        data.append({
-            "location": loc,
-            "crowd": crowd,
-            "level": level,
-            "color": color,
-            "wait": wait_time(crowd),
-            "best": best_time(loc)
-        })
-    return data
-
 # ---------------- UI STYLE ----------------
 STYLE = """
 <style>
@@ -123,178 +100,170 @@ body {
     font-family:'Segoe UI', sans-serif;
     background:#f4f6fb;
 }
-.navbar {
-    background:#1c2333;
-    padding:18px 40px;
-    display:flex;
-    justify-content:space-between;
-    align-items:center;
-}
-.brand {
-    display:flex;
-    align-items:center;
-    gap:12px;
-}
-.brand img { height:34px; }
-.brand h1 { color:white; font-size:20px; margin:0; }
-.brand span { color:#8ea0ff; }
-
-.menu {
-    position:relative;
-    display:inline-block;
-    margin-left:30px;
-    color:#cfd6f3;
-    cursor:pointer;
-}
-.menu-content {
-    display:none;
-    position:absolute;
-    background:white;
-    min-width:260px;
-    box-shadow:0 10px 25px rgba(0,0,0,0.15);
-    border-radius:10px;
-    z-index:1000;
-}
-.menu:hover .menu-content { display:block; }
-.menu-content a {
-    display:block;
-    padding:14px 18px;
-    color:#333;
-    text-decoration:none;
-}
-
 .container {
-    max-width:1200px;
+    max-width:1100px;
     margin:60px auto;
     padding:0 20px;
 }
-
-.hero {
+.card {
     background:white;
-    padding:60px;
-    border-radius:20px;
-    display:grid;
-    grid-template-columns:1.2fr 1fr;
-    gap:40px;
-    align-items:center;
-    box-shadow:0 20px 40px rgba(0,0,0,0.08);
+    padding:40px;
+    border-radius:18px;
+    box-shadow:0 15px 40px rgba(0,0,0,0.08);
 }
-
+select, input {
+    width:100%;
+    padding:14px;
+    margin-top:14px;
+    border-radius:8px;
+    border:1px solid #ccc;
+}
 .btn {
-    padding:14px 26px;
-    border-radius:10px;
+    margin-top:20px;
+    padding:14px 28px;
     background:#1f4fd8;
     color:white;
-    text-decoration:none;
+    border-radius:10px;
     font-weight:600;
+    text-decoration:none;
+    border:none;
+    cursor:pointer;
 }
-
-.btn.secondary {
-    background:#e4e8ff;
-    color:#1f4fd8;
-    margin-left:10px;
+.grid {
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
+    gap:20px;
+    margin-top:30px;
 }
-
-table {
-    width:100%;
-    border-collapse:collapse;
-    margin-top:40px;
-    background:white;
-    border-radius:14px;
-    overflow:hidden;
-    box-shadow:0 15px 30px rgba(0,0,0,0.08);
-}
-
-th, td {
-    padding:16px;
-    text-align:left;
-    font-size:14px;
-}
-
-th {
-    background:#1c2333;
-    color:white;
-}
-
-tr:nth-child(even) {
-    background:#f7f9ff;
-}
-
 .badge {
-    padding:6px 14px;
+    padding:6px 16px;
     border-radius:20px;
     color:white;
     font-weight:600;
+    display:inline-block;
+    margin-top:6px;
 }
-.green { background:#28a745; }
-.orange { background:#f0ad4e; }
-.red { background:#d9534f; }
-
-footer {
-    margin-top:80px;
-    background:#1c2333;
-    color:#aaa;
-    padding:40px;
-    text-align:center;
-}
+.green{background:#28a745;}
+.orange{background:#f0ad4e;}
+.red{background:#d9534f;}
 </style>
 """
 
-# ---------------- ROUTES ----------------
+# ---------------- HOME / DASHBOARD ----------------
 @app.route("/")
 def home():
     clear_old_entries()
-    rows = dashboard_data()
 
-    table_rows = "".join(f"""
+    rows = ""
+    for loc in LOCATIONS:
+        crowd = expected_crowd(loc)
+        level, color = crowd_level(crowd)
+        rows += f"""
         <tr>
-            <td>{r['location']}</td>
-            <td>{r['crowd']}</td>
-            <td><span class="badge {r['color']}">{r['level']}</span></td>
-            <td>{r['wait']} min</td>
-            <td>{r['best']}</td>
+            <td>{loc}</td>
+            <td>{crowd}</td>
+            <td><span class="badge {color}">{level}</span></td>
+            <td>{wait_time(crowd)} min</td>
+            <td>{best_time(loc)}</td>
         </tr>
-    """ for r in rows)
+        """
 
     return f"""
     <html><head><title>Q-SMART by UrbanX</title>{STYLE}</head><body>
-
-    <div class="navbar">
-        <div class="brand">
-            <img src="/static/Urbanx logo.jpeg">
-            <h1>Q-SMART <span>by UrbanX</span></h1>
-        </div>
-    </div>
-
     <div class="container">
-        <div class="hero">
-            <div>
-                <h2>Smart Crowd Monitoring Dashboard</h2>
-                <p>Real-time expected crowd overview across all locations.</p>
-                <a class="btn" href="/status">Check Status</a>
-                <a class="btn secondary" href="/join">Join Queue</a>
-            </div>
-            <img src="/static/Urbanx logo.jpeg" width="100%">
-        </div>
+        <h1>Q-SMART Dashboard</h1>
+        <a class="btn" href="/status">Check Status</a>
+        <a class="btn" href="/join" style="margin-left:10px;">Join Queue</a>
 
-        <table>
-            <tr>
+        <table style="width:100%;margin-top:40px;border-collapse:collapse;">
+            <tr style="background:#1c2333;color:white;">
                 <th>Location</th>
                 <th>Expected Crowd</th>
                 <th>Crowd Level</th>
-                <th>Estimated Wait</th>
+                <th>Wait Time</th>
                 <th>Best Time</th>
             </tr>
-            {table_rows}
+            {rows}
         </table>
     </div>
-
-    <footer>© 2026 Q-SMART by UrbanX</footer>
     </body></html>
     """
 
-# -------- KEEP YOUR /join and /status ROUTES SAME AS BEFORE --------
+# ---------------- JOIN QUEUE ----------------
+@app.route("/join")
+def join():
+    options = "".join(f"<option>{l}</option>" for l in LOCATIONS)
+    return f"""
+    <html><head><title>Join Queue</title>{STYLE}</head><body>
+    <div class="container">
+        <div class="card">
+            <h2>Join Queue</h2>
+            <form method="post" action="/add">
+                <select name="location">{options}</select>
+                <input type="submit" value="Register" class="btn">
+            </form>
+            <br><a href="/">← Back to Dashboard</a>
+        </div>
+    </div>
+    </body></html>
+    """
 
+@app.route("/add", methods=["POST"])
+def add():
+    conn = sqlite3.connect("data.db")
+    conn.execute(
+        "INSERT INTO queue (location, time) VALUES (?, ?)",
+        (request.form["location"], datetime.now())
+    )
+    conn.commit()
+    conn.close()
+    return """
+    <html><body>
+    <h2>Registered Successfully ✅</h2>
+    <a href="/">Go Home</a>
+    </body></html>
+    """
+
+# ---------------- CHECK STATUS ----------------
+@app.route("/status")
+def status():
+    location = request.args.get("location")
+
+    options = "".join(
+        f"<option {'selected' if l == location else ''}>{l}</option>"
+        for l in LOCATIONS
+    )
+
+    result = ""
+    if location:
+        crowd = expected_crowd(location)
+        level, color = crowd_level(crowd)
+        result = f"""
+        <div class="grid">
+            <div class="card"><h3>Expected Crowd</h3><h2>{crowd}</h2></div>
+            <div class="card"><h3>Crowd Level</h3><span class="badge {color}">{level}</span></div>
+            <div class="card"><h3>Waiting Time</h3><h3>{wait_time(crowd)} min</h3></div>
+            <div class="card"><h3>Best Time</h3><h3>{best_time(location)}</h3></div>
+        </div>
+        """
+
+    return f"""
+    <html><head><title>Check Status</title>{STYLE}</head><body>
+    <div class="container">
+        <div class="card">
+            <h2>Check Queue Status</h2>
+            <form method="get">
+                <select name="location">{options}</select>
+                <input type="submit" value="Check Status" class="btn">
+            </form>
+        </div>
+        {result}
+        <br><a href="/">← Back to Dashboard</a>
+    </div>
+    </body></html>
+    """
+
+# ---------------- RUN ----------------
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port)
