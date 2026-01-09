@@ -95,57 +95,142 @@ def best_time(location):
 # ---------------- UI STYLE ----------------
 STYLE = """
 <style>
+:root {
+  --primary:#2563eb;
+  --bg:#f4f7fb;
+  --card:#ffffff;
+  --text:#0f172a;
+  --muted:#64748b;
+}
+* { box-sizing:border-box; }
+
 body {
-    margin:0;
-    font-family:'Segoe UI', sans-serif;
-    background:#f4f6fb;
+  margin:0;
+  font-family:'Inter','Segoe UI',sans-serif;
+  background:var(--bg);
+  color:var(--text);
 }
+
+/* NAVBAR */
+.navbar {
+  background:#ffffff;
+  border-bottom:1px solid #e5e7eb;
+  padding:16px 48px;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  position:sticky;
+  top:0;
+  z-index:1000;
+}
+
+.brand {
+  display:flex;
+  align-items:center;
+  gap:12px;
+  font-weight:700;
+}
+
+.brand img { height:36px; }
+.brand span { color:var(--primary); }
+
+/* LAYOUT */
 .container {
-    max-width:1100px;
-    margin:60px auto;
-    padding:0 20px;
+  max-width:1200px;
+  margin:60px auto;
+  padding:0 24px;
 }
-.card {
-    background:white;
-    padding:40px;
-    border-radius:18px;
-    box-shadow:0 15px 40px rgba(0,0,0,0.08);
+
+/* HERO */
+.hero {
+  background:linear-gradient(135deg,#2563eb,#4f46e5);
+  color:white;
+  padding:70px;
+  border-radius:28px;
+  display:grid;
+  grid-template-columns:1.3fr 1fr;
+  gap:40px;
+  align-items:center;
 }
-select, input {
-    width:100%;
-    padding:14px;
-    margin-top:14px;
-    border-radius:8px;
-    border:1px solid #ccc;
-}
+
+.hero h1 { font-size:44px; margin:0; }
+.hero p { font-size:18px; opacity:.9; max-width:520px; }
+
+.hero-actions { margin-top:30px; }
+
 .btn {
-    margin-top:20px;
-    padding:14px 28px;
-    background:#1f4fd8;
-    color:white;
-    border-radius:10px;
-    font-weight:600;
-    text-decoration:none;
-    border:none;
-    cursor:pointer;
+  padding:14px 28px;
+  border-radius:12px;
+  font-weight:600;
+  text-decoration:none;
+  display:inline-block;
 }
+
+.btn.primary { background:white; color:#1e3a8a; }
+.btn.secondary {
+  background:rgba(255,255,255,.15);
+  color:white;
+  margin-left:12px;
+}
+
+/* DASHBOARD */
+.dashboard { margin-top:60px; }
+.dashboard h2 { font-size:28px; margin-bottom:20px; }
+
 .grid {
-    display:grid;
-    grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
-    gap:20px;
-    margin-top:30px;
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(260px,1fr));
+  gap:24px;
 }
+
+/* CARDS */
+.card {
+  background:var(--card);
+  padding:26px;
+  border-radius:20px;
+  box-shadow:0 10px 30px rgba(0,0,0,.08);
+}
+
+.card h3 {
+  margin:0;
+  font-size:15px;
+  color:var(--muted);
+}
+
+.value {
+  font-size:34px;
+  font-weight:700;
+  margin-top:6px;
+}
+
 .badge {
-    padding:6px 16px;
-    border-radius:20px;
-    color:white;
-    font-weight:600;
-    display:inline-block;
-    margin-top:6px;
+  margin-top:10px;
+  display:inline-block;
+  padding:6px 14px;
+  border-radius:20px;
+  font-size:13px;
+  font-weight:600;
+  color:white;
 }
-.green{background:#28a745;}
-.orange{background:#f0ad4e;}
-.red{background:#d9534f;}
+
+.green{background:#22c55e;}
+.orange{background:#f59e0b;}
+.red{background:#ef4444;}
+
+select,input {
+  width:100%;
+  padding:14px;
+  border-radius:10px;
+  border:1px solid #ccc;
+  margin-top:14px;
+}
+
+footer {
+  margin-top:80px;
+  padding:40px;
+  text-align:center;
+  color:var(--muted);
+}
 </style>
 """
 
@@ -154,38 +239,51 @@ select, input {
 def home():
     clear_old_entries()
 
-    rows = ""
+    cards = ""
     for loc in LOCATIONS:
         crowd = expected_crowd(loc)
         level, color = crowd_level(crowd)
-        rows += f"""
-        <tr>
-            <td>{loc}</td>
-            <td>{crowd}</td>
-            <td><span class="badge {color}">{level}</span></td>
-            <td>{wait_time(crowd)} min</td>
-            <td>{best_time(loc)}</td>
-        </tr>
+        cards += f"""
+        <div class="card">
+            <strong>{loc}</strong>
+            <h3>Expected Crowd</h3>
+            <div class="value">{crowd}</div>
+            <span class="badge {color}">{level}</span>
+            <h3 style="margin-top:14px">Best Time</h3>
+            <small>{best_time(loc)}</small>
+        </div>
         """
 
     return f"""
     <html><head><title>Q-SMART by UrbanX</title>{STYLE}</head><body>
-    <div class="container">
-        <h1>Q-SMART Dashboard</h1>
-        <a class="btn" href="/status">Check Status</a>
-        <a class="btn" href="/join" style="margin-left:10px;">Join Queue</a>
 
-        <table style="width:100%;margin-top:40px;border-collapse:collapse;">
-            <tr style="background:#1c2333;color:white;">
-                <th>Location</th>
-                <th>Expected Crowd</th>
-                <th>Crowd Level</th>
-                <th>Wait Time</th>
-                <th>Best Time</th>
-            </tr>
-            {rows}
-        </table>
+    <div class="navbar">
+        <div class="brand">
+            <img src="/static/Urbanx logo.jpeg">
+            Q-SMART <span>by UrbanX</span>
+        </div>
     </div>
+
+    <div class="container">
+        <div class="hero">
+            <div>
+                <h1>Smart Crowd Intelligence</h1>
+                <p>Predict congestion, estimate waiting time, and choose the best time to visit public locations.</p>
+                <div class="hero-actions">
+                    <a class="btn primary" href="/status">Check Status</a>
+                    <a class="btn secondary" href="/join">Join Queue</a>
+                </div>
+            </div>
+            <img src="/static/Urbanx logo.jpeg" width="100%">
+        </div>
+
+        <div class="dashboard">
+            <h2>Live Crowd Overview</h2>
+            <div class="grid">{cards}</div>
+        </div>
+    </div>
+
+    <footer>© 2026 Q-SMART by UrbanX</footer>
     </body></html>
     """
 
@@ -194,18 +292,16 @@ def home():
 def join():
     options = "".join(f"<option>{l}</option>" for l in LOCATIONS)
     return f"""
-    <html><head><title>Join Queue</title>{STYLE}</head><body>
+    <html><head>{STYLE}</head><body>
     <div class="container">
         <div class="card">
             <h2>Join Queue</h2>
             <form method="post" action="/add">
                 <select name="location">{options}</select>
-                <input type="submit" value="Register" class="btn">
+                <input type="submit" value="Register" class="btn primary">
             </form>
-            <br><a href="/">← Back to Dashboard</a>
         </div>
-    </div>
-    </body></html>
+    </div></body></html>
     """
 
 @app.route("/add", methods=["POST"])
@@ -220,7 +316,7 @@ def add():
     return """
     <html><body>
     <h2>Registered Successfully ✅</h2>
-    <a href="/">Go Home</a>
+    <a href="/">Return to Dashboard</a>
     </body></html>
     """
 
@@ -230,7 +326,7 @@ def status():
     location = request.args.get("location")
 
     options = "".join(
-        f"<option {'selected' if l == location else ''}>{l}</option>"
+        f"<option {'selected' if l==location else ''}>{l}</option>"
         for l in LOCATIONS
     )
 
@@ -239,28 +335,26 @@ def status():
         crowd = expected_crowd(location)
         level, color = crowd_level(crowd)
         result = f"""
-        <div class="grid">
-            <div class="card"><h3>Expected Crowd</h3><h2>{crowd}</h2></div>
+        <div class="grid" style="margin-top:40px">
+            <div class="card"><h3>Expected Crowd</h3><div class="value">{crowd}</div></div>
             <div class="card"><h3>Crowd Level</h3><span class="badge {color}">{level}</span></div>
-            <div class="card"><h3>Waiting Time</h3><h3>{wait_time(crowd)} min</h3></div>
-            <div class="card"><h3>Best Time</h3><h3>{best_time(location)}</h3></div>
+            <div class="card"><h3>Waiting Time</h3><div class="value">{wait_time(crowd)} min</div></div>
+            <div class="card"><h3>Best Time</h3><div class="value">{best_time(location)}</div></div>
         </div>
         """
 
     return f"""
-    <html><head><title>Check Status</title>{STYLE}</head><body>
+    <html><head>{STYLE}</head><body>
     <div class="container">
         <div class="card">
             <h2>Check Queue Status</h2>
             <form method="get">
                 <select name="location">{options}</select>
-                <input type="submit" value="Check Status" class="btn">
+                <input type="submit" value="Check Status" class="btn primary">
             </form>
         </div>
         {result}
-        <br><a href="/">← Back to Dashboard</a>
-    </div>
-    </body></html>
+    </div></body></html>
     """
 
 # ---------------- RUN ----------------
