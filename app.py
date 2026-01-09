@@ -1,8 +1,6 @@
 from flask import Flask, request
-import sqlite3
+import sqlite3, csv, os
 from datetime import datetime, timedelta
-import csv
-import os
 
 app = Flask(__name__)
 
@@ -54,20 +52,12 @@ def expected_crowd(location):
     today = now.strftime("%A")
     hour = now.hour
 
-    today_rows = [
-        r for r in baseline_data
-        if r["location"] == location and r["day"] == today
-    ]
-
+    rows = [r for r in baseline_data if r["location"] == location and r["day"] == today]
     baseline = 0
-    if today_rows:
-        hours = sorted(int(r["hour"]) for r in today_rows)
+    if rows:
+        hours = sorted(int(r["hour"]) for r in rows)
         chosen = max([h for h in hours if h <= hour], default=min(hours))
-        baseline = next(
-            int(r["baseline_crowd"])
-            for r in today_rows
-            if int(r["hour"]) == chosen
-        )
+        baseline = next(int(r["baseline_crowd"]) for r in rows if int(r["hour"]) == chosen)
 
     conn = sqlite3.connect("data.db")
     registered = conn.execute(
@@ -82,10 +72,11 @@ def wait_time(crowd):
 
 def crowd_level(crowd):
     if crowd <= 50:
-        return ("Low", "green")
+        return "Low", "green"
     elif crowd <= 120:
-        return ("Moderate", "orange")
-    return ("High", "red")
+        return "Moderate", "orange"
+    else:
+        return "High", "red"
 
 def best_time(location):
     hours = {}
@@ -99,129 +90,75 @@ def best_time(location):
     h = min(hours, key=hours.get)
     return f"{h}:00 – {h+1}:00"
 
-# ---------------- UI STYLE ----------------
+# ---------------- UI ----------------
+solutions_menu = "".join(
+    f'<a href="/status?location={l}">{l}</a>' for l in LOCATIONS
+)
+
 STYLE = """
 <style>
-body {
-    margin:0;
-    font-family:'Segoe UI', sans-serif;
-    background:#f4f6fb;
+body{margin:0;font-family:'Segoe UI',sans-serif;background:#f5f7fb}
+.navbar{
+ background:#1c2536;color:white;padding:15px 40px;
+ display:flex;justify-content:space-between;align-items:center
 }
-.navbar {
-    background:#1c2333;
-    padding:18px 40px;
-    display:flex;
-    justify-content:space-between;
-    align-items:center;
+.brand{font-size:20px;font-weight:700;margin-left:10px}
+.logo{height:36px;vertical-align:middle}
+.nav-right a{color:white;text-decoration:none;margin-left:20px;font-weight:500}
+.primary{background:#3b6cff;padding:8px 14px;border-radius:6px}
+.dropdown{position:relative;display:inline-block}
+.dropbtn{background:none;border:none;color:white;font-size:15px;font-weight:500;cursor:pointer}
+.dropdown-content{
+ display:none;position:absolute;background:white;color:#333;
+ min-width:240px;max-height:300px;overflow-y:auto;
+ box-shadow:0 10px 30px rgba(0,0,0,.15);border-radius:8px;z-index:1
 }
-.brand {
-    display:flex;
-    align-items:center;
-    gap:12px;
+.dropdown-content a{
+ color:#333;padding:10px 15px;text-decoration:none;display:block
 }
-.brand img { height:34px; }
-.brand h1 {
-    color:white;
-    font-size:20px;
-    margin:0;
-}
-.brand span { color:#8ea0ff; }
+.dropdown-content a:hover{background:#f0f2f8}
+.dropdown:hover .dropdown-content{display:block}
 
-.menu {
-    position:relative;
-    display:inline-block;
-    margin-left:30px;
-    color:#cfd6f3;
-    cursor:pointer;
-    font-weight:500;
+.container{
+ max-width:1000px;margin:80px auto;background:white;
+ padding:50px;border-radius:16px;box-shadow:0 20px 40px rgba(0,0,0,.08)
 }
-.menu-content {
-    display:none;
-    position:absolute;
-    top:30px;
-    background:white;
-    min-width:220px;
-    box-shadow:0 10px 25px rgba(0,0,0,0.15);
-    border-radius:10px;
-    overflow:hidden;
-    z-index:10;
-}
-.menu-content a {
-    display:block;
-    padding:14px 18px;
-    color:#333;
-    text-decoration:none;
-    font-size:14px;
-}
-.menu-content a:hover { background:#f2f4fb; }
-.menu:hover .menu-content { display:block; }
-
-.container {
-    max-width:1100px;
-    margin:70px auto;
-    padding:0 20px;
-}
-.hero {
-    display:grid;
-    grid-template-columns:1.2fr 1fr;
-    gap:40px;
-    align-items:center;
-}
-.hero h2 { font-size:42px; }
-.hero p { font-size:18px; color:#555; }
-
-.btn {
-    padding:14px 26px;
-    border-radius:10px;
-    background:#1f4fd8;
-    color:white;
-    text-decoration:none;
-    font-weight:600;
-    display:inline-block;
-}
-.btn.secondary {
-    background:#e4e8ff;
-    color:#1f4fd8;
-    margin-left:10px;
-}
-
-.card {
-    background:white;
-    padding:30px;
-    border-radius:16px;
-    box-shadow:0 12px 30px rgba(0,0,0,0.08);
-}
-.card-grid {
-    display:grid;
-    grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
-    gap:24px;
-    margin-top:50px;
-}
-select, input {
-    width:100%;
-    padding:14px;
-    margin-top:15px;
-    border-radius:8px;
-    border:1px solid #ccc;
-}
-.badge {
-    padding:8px 16px;
-    border-radius:20px;
-    color:white;
-    font-weight:600;
-}
-.green{background:#28a745;}
-.orange{background:#f0ad4e;}
-.red{background:#d9534f;}
-
-footer {
-    margin-top:80px;
-    background:#1c2333;
-    color:#aaa;
-    padding:40px;
-    text-align:center;
-}
+.hero{display:flex;justify-content:space-between;align-items:center}
+.hero h1{font-size:42px;margin-bottom:10px}
+.hero p{color:#555;font-size:18px}
+.btn{padding:14px 22px;background:#3b6cff;color:white;
+ text-decoration:none;border-radius:10px;font-weight:600;margin-right:10px}
+.card-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:20px}
+.card{background:#f9fafc;padding:25px;border-radius:14px}
+.badge{padding:6px 14px;border-radius:20px;color:white;font-weight:600}
+.green{background:#28a745}.orange{background:#f0ad4e}.red{background:#dc3545}
+select,input{width:100%;padding:14px;border-radius:10px;border:1px solid #ccc}
 </style>
+"""
+
+NAVBAR = f"""
+<div class="navbar">
+  <div>
+    <img src="/static/Urbanx logo.jpeg" class="logo">
+    <span class="brand">Q-SMART <small>by UrbanX</small></span>
+  </div>
+  <div class="nav-right">
+    <div class="dropdown">
+      <button class="dropbtn">Company ▾</button>
+      <div class="dropdown-content">
+        <a href="/company">About UrbanX</a>
+      </div>
+    </div>
+
+    <div class="dropdown">
+      <button class="dropbtn">Solutions ▾</button>
+      <div class="dropdown-content">{solutions_menu}</div>
+    </div>
+
+    <a href="/join">Join Queue</a>
+    <a href="/status" class="primary">Check Status</a>
+  </div>
+</div>
 """
 
 # ---------------- ROUTES ----------------
@@ -229,75 +166,48 @@ footer {
 def home():
     clear_old_entries()
     return f"""
-    <html><head><title>Q-SMART</title>{STYLE}</head><body>
-
-    <div class="navbar">
-        <div class="brand">
-            <img src="/static/logo.png">
-            <h1>Q-SMART <span>by UrbanX</span></h1>
-        </div>
-        <div>
-            <div class="menu">
-                Company
-                <div class="menu-content">
-                    <a href="#">About UrbanX</a>
-                    <a href="#">Our Vision</a>
-                    <a href="#">Contact</a>
-                </div>
-            </div>
-            <div class="menu">
-                Solutions
-                <div class="menu-content">
-                    <a href="#">Healthcare</a>
-                    <a href="#">Transportation</a>
-                    <a href="#">Public Services</a>
-                    <a href="#">Retail</a>
-                    <a href="#">Education</a>
-                    <a href="#">Religious Places</a>
-                </div>
-            </div>
-        </div>
+    <html><head><title>Q-SMART</title>{STYLE}</head>
+    <body>{NAVBAR}
+    <div class="container hero">
+      <div>
+        <h1>Experience Smarter Crowd Planning</h1>
+        <p>Predict queues, avoid peak hours, and plan visits efficiently.</p>
+        <a class="btn" href="/status">Check Crowd Status</a>
+        <a class="btn" style="background:#e4e9ff;color:#3b6cff" href="/join">Join Queue</a>
+      </div>
+      <img src="/static/Urbanx logo.jpeg" style="height:200px">
     </div>
+    </body></html>
+    """
 
-    <div class="container">
-        <div class="hero">
-            <div>
-                <h2>Experience Smarter Crowd Planning</h2>
-                <p>Predict queues, avoid peak hours, and plan visits efficiently.</p>
-                <a class="btn" href="/status">Check Crowd Status</a>
-                <a class="btn secondary" href="/join">Join Queue</a>
-            </div>
-            <div>
-                <img src="https://illustrations.popsy.co/gray/work-from-home.svg" width="100%">
-            </div>
-        </div>
-
-        <div class="card-grid">
-            <div class="card"><h3>Expected Crowd</h3><p>Based on trends + registrations</p></div>
-            <div class="card"><h3>Waiting Time</h3><p>Capacity-aware estimation</p></div>
-            <div class="card"><h3>Best Time</h3><p>Lowest crowd hour suggested</p></div>
-            <div class="card"><h3>Privacy First</h3><p>No personal data collected</p></div>
-        </div>
+@app.route("/company")
+def company():
+    return f"""
+    <html><head><title>Company</title>{STYLE}</head>
+    <body>{NAVBAR}
+    <div class="container" style="text-align:center">
+      <img src="/static/Urbanx logo.jpeg" style="height:140px">
+      <h1>UrbanX</h1>
+      <p style="max-width:600px;margin:auto;color:#555;font-size:18px">
+        UrbanX builds smart urban analytics platforms that reduce waiting
+        times and improve access to public infrastructure.
+      </p>
     </div>
-
-    <footer>© 2026 Q-SMART by UrbanX</footer>
     </body></html>
     """
 
 @app.route("/join")
 def join():
-    options = "".join(f"<option>{l}</option>" for l in LOCATIONS)
+    opts = "".join(f"<option>{l}</option>" for l in LOCATIONS)
     return f"""
-    <html><head>{STYLE}</head><body>
+    <html><head><title>Join Queue</title>{STYLE}</head>
+    <body>{NAVBAR}
     <div class="container">
-        <div class="card">
-            <h2>Join Queue</h2>
-            <p>Select your location to register.</p>
-            <form method="post" action="/add">
-                <select name="location">{options}</select>
-                <input type="submit" value="Register" class="btn">
-            </form>
-        </div>
+      <h2>Join Queue</h2>
+      <form method="post" action="/add">
+        <select name="location">{opts}</select><br><br>
+        <input type="submit" value="Register" class="btn">
+      </form>
     </div></body></html>
     """
 
@@ -305,54 +215,47 @@ def join():
 def add():
     conn = sqlite3.connect("data.db")
     conn.execute(
-        "INSERT INTO queue (location, time) VALUES (?, ?)",
+        "INSERT INTO queue (location,time) VALUES (?,?)",
         (request.form["location"], datetime.now())
     )
     conn.commit()
     conn.close()
     return f"""
-    <html><head>{STYLE}</head><body>
-    <div class="container">
-        <div class="card">
-            <h2>Registration Successful</h2>
-            <p>You have been added to the queue.</p>
-            <a class="btn" href="/">Return Home</a>
-        </div>
-    </div></body></html>
+    <html><head>{STYLE}</head>
+    <body>{NAVBAR}
+    <div class="container"><h2>Registered Successfully ✅</h2></div>
+    </body></html>
     """
 
 @app.route("/status")
 def status():
-    location = request.args.get("location")
-    options = "".join(f"<option>{l}</option>" for l in LOCATIONS)
+    loc = request.args.get("location")
     result = ""
-
-    if location:
-        crowd = expected_crowd(location)
-        level, color = crowd_level(crowd)
+    if loc:
+        c = expected_crowd(loc)
+        lvl, col = crowd_level(c)
         result = f"""
         <div class="card-grid">
-            <div class="card"><h3>Expected Crowd</h3><h2>{crowd}</h2></div>
-            <div class="card"><h3>Crowd Level</h3><span class="badge {color}">{level}</span></div>
-            <div class="card"><h3>Waiting Time</h3><h3>{wait_time(crowd)} min</h3></div>
-            <div class="card"><h3>Best Time</h3><h3>{best_time(location)}</h3></div>
+          <div class="card"><b>Expected Crowd</b><h2>{c}</h2></div>
+          <div class="card"><b>Crowd Level</b><span class="badge {col}">{lvl}</span></div>
+          <div class="card"><b>Waiting Time</b><h3>{wait_time(c)} min</h3></div>
+          <div class="card"><b>Best Time</b><h3>{best_time(loc)}</h3></div>
         </div>
         """
 
+    opts = "".join(f"<option>{l}</option>" for l in LOCATIONS)
     return f"""
-    <html><head>{STYLE}</head><body>
+    <html><head><title>Status</title>{STYLE}</head>
+    <body>{NAVBAR}
     <div class="container">
-        <div class="card">
-            <h2>Check Queue Status</h2>
-            <form method="get">
-                <select name="location">{options}</select>
-                <input type="submit" value="Check Status" class="btn">
-            </form>
-        </div>
-        {result}
+      <h2>Check Queue Status</h2>
+      <form method="get">
+        <select name="location">{opts}</select><br><br>
+        <input type="submit" value="Check Status" class="btn">
+      </form>
+      {result}
     </div></body></html>
     """
 
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 5000))
-    app.run(host="0.0.0.0", port=port)
+    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
