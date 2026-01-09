@@ -17,7 +17,7 @@ LOCATIONS = [
     "Public Library", "Examination Centre"
 ]
 
-AVG_SERVICE_TIME = 2        # minutes per person
+AVG_SERVICE_TIME = 2
 SERVICE_COUNTERS = 3
 
 # ---------------- DATABASE ----------------
@@ -41,33 +41,26 @@ def clear_old_entries():
 
 init_db()
 
-# ---------------- BASELINE DATA ----------------
+# ---------------- BASELINE ----------------
 def load_baseline():
     with open("baseline_crowd.csv", newline="", encoding="utf-8") as f:
         return list(csv.DictReader(f))
 
 baseline_data = load_baseline()
 
-# ---------------- CORE LOGIC ----------------
+# ---------------- LOGIC ----------------
 def expected_crowd(location):
     now = datetime.now()
     today = now.strftime("%A")
     hour = now.hour
 
-    today_rows = [
-        r for r in baseline_data
-        if r["location"] == location and r["day"] == today
-    ]
-
+    today_rows = [r for r in baseline_data if r["location"] == location and r["day"] == today]
     baseline = 0
+
     if today_rows:
         hours = sorted(int(r["hour"]) for r in today_rows)
-        chosen_hour = max([h for h in hours if h <= hour], default=min(hours))
-        baseline = next(
-            int(r["baseline_crowd"])
-            for r in today_rows
-            if int(r["hour"]) == chosen_hour
-        )
+        chosen = max([h for h in hours if h <= hour], default=min(hours))
+        baseline = next(int(r["baseline_crowd"]) for r in today_rows if int(r["hour"]) == chosen)
 
     conn = sqlite3.connect("data.db")
     registered = conn.execute(
@@ -78,140 +71,58 @@ def expected_crowd(location):
     return baseline + registered
 
 def wait_time(crowd):
-    if crowd == 0:
-        return 0
-    return int((crowd / SERVICE_COUNTERS) * AVG_SERVICE_TIME)
+    return int((crowd / SERVICE_COUNTERS) * AVG_SERVICE_TIME) if crowd else 0
 
 def crowd_level(crowd):
     if crowd <= 50:
         return ("Low", "green")
     elif crowd <= 120:
         return ("Moderate", "orange")
-    else:
-        return ("High", "red")
+    return ("High", "red")
 
 def best_time(location):
-    hour_map = {}
+    hours = {}
     for r in baseline_data:
         if r["location"] == location:
             h = int(r["hour"])
             c = int(r["baseline_crowd"])
-            hour_map[h] = min(hour_map.get(h, c), c)
-
-    if not hour_map:
+            hours[h] = min(hours.get(h, c), c)
+    if not hours:
         return "Data unavailable"
+    h = min(hours, key=hours.get)
+    return f"{h}:00 – {h+1}:00"
 
-    best = min(hour_map, key=hour_map.get)
-    return f"{best}:00 – {best+1}:00"
-
-# ---------------- UI STYLE ----------------
+# ---------------- STYLE ----------------
 STYLE = """
 <style>
-:root {
-    --primary:#1f4fd8;
-    --dark:#1c2333;
-    --bg:#f4f6fb;
-    --card:#ffffff;
-    --text:#333;
-}
-* { box-sizing:border-box; }
-body {
-    margin:0;
-    font-family:'Segoe UI', sans-serif;
-    background:var(--bg);
-    color:var(--text);
-}
+body { margin:0; font-family:Segoe UI, sans-serif; background:#f4f6fb; }
 .navbar {
-    background:var(--dark);
-    padding:18px 40px;
-    display:flex;
-    justify-content:space-between;
-    align-items:center;
+    background:#1c2333; padding:18px 40px;
+    display:flex; justify-content:space-between; align-items:center;
 }
-.navbar h1 {
-    color:white;
-    font-size:22px;
-    margin:0;
-}
-.navbar a {
-    color:#cfd6f3;
-    margin-left:20px;
-    text-decoration:none;
-    font-weight:500;
-}
-.container {
-    max-width:1100px;
-    margin:60px auto;
-    padding:0 20px;
-}
-.hero {
-    display:grid;
-    grid-template-columns:1.2fr 1fr;
-    gap:40px;
-    align-items:center;
-}
-.hero h2 {
-    font-size:42px;
-    margin:0;
-}
-.hero p {
-    font-size:18px;
-    color:#555;
-    margin:20px 0;
-}
+.navbar h1 { color:white; font-size:20px; margin:0; }
+.navbar span { color:#8ea0ff; font-weight:500; }
+.container { max-width:1100px; margin:70px auto; padding:0 20px; }
+.hero { display:grid; grid-template-columns:1.2fr 1fr; gap:40px; align-items:center; }
+.hero h2 { font-size:42px; }
+.hero p { font-size:18px; color:#555; }
 .btn {
-    display:inline-block;
-    padding:14px 26px;
-    border-radius:10px;
-    background:var(--primary);
-    color:white;
-    text-decoration:none;
-    font-weight:600;
-    margin-right:12px;
+    padding:14px 26px; border-radius:10px; background:#1f4fd8;
+    color:white; text-decoration:none; font-weight:600; display:inline-block;
 }
-.btn.secondary {
-    background:#e4e8ff;
-    color:var(--primary);
-}
-.card-grid {
-    display:grid;
-    grid-template-columns:repeat(auto-fit,minmax(240px,1fr));
-    gap:24px;
-    margin-top:70px;
-}
+.btn.secondary { background:#e4e8ff; color:#1f4fd8; margin-left:10px; }
 .card {
-    background:var(--card);
-    padding:26px;
-    border-radius:16px;
+    background:white; padding:30px; border-radius:16px;
     box-shadow:0 12px 30px rgba(0,0,0,0.08);
 }
-.card h3 {
-    margin-top:0;
+.card-grid {
+    display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
+    gap:24px; margin-top:50px;
 }
-.badge {
-    padding:8px 16px;
-    border-radius:20px;
-    font-weight:600;
-    color:white;
-    display:inline-block;
-}
-.green { background:#28a745; }
-.orange { background:#f0ad4e; }
-.red { background:#d9534f; }
-footer {
-    margin-top:80px;
-    padding:40px;
-    background:#1c2333;
-    color:#aaa;
-    text-align:center;
-}
-select, input {
-    width:100%;
-    padding:12px;
-    margin-top:10px;
-    border-radius:8px;
-    border:1px solid #ccc;
-}
+select, input { width:100%; padding:14px; margin-top:15px; border-radius:8px; border:1px solid #ccc; }
+.badge { padding:8px 16px; border-radius:20px; color:white; font-weight:600; }
+.green{background:#28a745;} .orange{background:#f0ad4e;} .red{background:#d9534f;}
+footer { margin-top:80px; background:#1c2333; color:#aaa; padding:40px; text-align:center; }
 </style>
 """
 
@@ -220,27 +131,18 @@ select, input {
 def home():
     clear_old_entries()
     return f"""
-    <html>
-    <head><title>Q-SMART</title>{STYLE}</head>
-    <body>
+    <html><head><title>Q-SMART</title>{STYLE}</head><body>
 
     <div class="navbar">
-        <h1>Q-SMART</h1>
-        <div>
-            <a href="/">Home</a>
-            <a href="/join">Join Queue</a>
-            <a href="/status">Check Status</a>
-        </div>
+        <h1>Q-SMART <span>by UrbanX</span></h1>
+        <div style="color:#cfd6f3">Company | Solutions</div>
     </div>
 
     <div class="container">
         <div class="hero">
             <div>
                 <h2>Experience Smarter Crowd Planning</h2>
-                <p>
-                    Predict queues, avoid peak hours, and plan visits efficiently
-                    using historical trends and real-time registrations.
-                </p>
+                <p>Predict queues, avoid peak hours, and plan visits efficiently.</p>
                 <a class="btn" href="/status">Check Crowd Status</a>
                 <a class="btn secondary" href="/join">Join Queue</a>
             </div>
@@ -250,31 +152,15 @@ def home():
         </div>
 
         <div class="card-grid">
-            <div class="card">
-                <h3>📊 Expected Crowd</h3>
-                <p>Calculated using historical patterns + registered users.</p>
-            </div>
-            <div class="card">
-                <h3>⏱ Waiting Time</h3>
-                <p>Estimated based on service counters and crowd size.</p>
-            </div>
-            <div class="card">
-                <h3>📅 Best Time</h3>
-                <p>Lowest crowd hour suggested from weekly data.</p>
-            </div>
-            <div class="card">
-                <h3>🔒 Privacy First</h3>
-                <p>No personal data. No hardware. Fully software-based.</p>
-            </div>
+            <div class="card"><h3>Expected Crowd</h3><p>Calculated from trends + registrations</p></div>
+            <div class="card"><h3>Waiting Time</h3><p>Based on service capacity</p></div>
+            <div class="card"><h3>Best Time</h3><p>Suggested low-crowd hour</p></div>
+            <div class="card"><h3>Privacy First</h3><p>No personal data collected</p></div>
         </div>
     </div>
 
-    <footer>
-        © 2026 Q-SMART • Smart Crowd Prediction Platform
-    </footer>
-
-    </body>
-    </html>
+    <footer>© 2026 Q-SMART by UrbanX</footer>
+    </body></html>
     """
 
 @app.route("/join")
@@ -283,11 +169,14 @@ def join():
     return f"""
     <html><head>{STYLE}</head><body>
     <div class="container">
-        <h2>Join Queue</h2>
-        <form method="post" action="/add">
-            <select name="location">{options}</select>
-            <input type="submit" value="Register" class="btn">
-        </form>
+        <div class="card">
+            <h2>Join Queue</h2>
+            <p>Select your location to register.</p>
+            <form method="post" action="/add">
+                <select name="location">{options}</select>
+                <input type="submit" value="Register" class="btn">
+            </form>
+        </div>
     </div></body></html>
     """
 
@@ -303,8 +192,11 @@ def add():
     return f"""
     <html><head>{STYLE}</head><body>
     <div class="container">
-        <h2>Registered Successfully ✅</h2>
-        <a class="btn" href="/">Go Home</a>
+        <div class="card">
+            <h2>Registration Successful</h2>
+            <p>You have been added to the queue.</p>
+            <a class="btn" href="/">Return Home</a>
+        </div>
     </div></body></html>
     """
 
@@ -312,12 +204,12 @@ def add():
 def status():
     location = request.args.get("location")
     options = "".join(f"<option>{l}</option>" for l in LOCATIONS)
-    output = ""
+    result = ""
 
     if location:
         crowd = expected_crowd(location)
         level, color = crowd_level(crowd)
-        output = f"""
+        result = f"""
         <div class="card-grid">
             <div class="card"><h3>Expected Crowd</h3><h2>{crowd}</h2></div>
             <div class="card"><h3>Crowd Level</h3><span class="badge {color}">{level}</span></div>
@@ -329,12 +221,14 @@ def status():
     return f"""
     <html><head>{STYLE}</head><body>
     <div class="container">
-        <h2>Check Queue Status</h2>
-        <form method="get">
-            <select name="location">{options}</select>
-            <input type="submit" value="Check Status" class="btn">
-        </form>
-        {output}
+        <div class="card">
+            <h2>Check Queue Status</h2>
+            <form method="get">
+                <select name="location">{options}</select>
+                <input type="submit" value="Check Status" class="btn">
+            </form>
+        </div>
+        {result}
     </div></body></html>
     """
 
