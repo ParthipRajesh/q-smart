@@ -2,10 +2,11 @@ from flask import Flask, request
 import sqlite3
 from datetime import datetime, timedelta
 import csv
+import os
 
 app = Flask(__name__)
 
-# ---------------- ALL LOCATIONS (MATCHES CSV) ----------------
+# ---------------- LOCATIONS ----------------
 LOCATIONS = [
     "Government Hospital", "Private Hospital", "Primary Health Centre",
     "Ration Shop", "Supermarket", "Shopping Complex", "Shopping Mall",
@@ -16,9 +17,8 @@ LOCATIONS = [
     "Public Library", "Examination Centre"
 ]
 
-# ---------------- SERVICE PARAMETERS ----------------
-AVG_SERVICE_TIME = 2      # minutes per person
-SERVICE_COUNTERS = 3      # assumed parallel service capacity
+AVG_SERVICE_TIME = 2
+SERVICE_COUNTERS = 3
 
 # ---------------- DATABASE ----------------
 def init_db():
@@ -41,122 +41,167 @@ def clear_old_entries():
 
 init_db()
 
-# ---------------- LOAD BASELINE CSV ----------------
-def load_baseline_data():
+# ---------------- BASELINE DATA ----------------
+def load_baseline():
     with open("baseline_crowd.csv", newline="", encoding="utf-8") as f:
         return list(csv.DictReader(f))
 
-baseline_data = load_baseline_data()
+baseline_data = load_baseline()
 
-# ---------------- EXPECTED CROWD ENGINE ----------------
+# ---------------- CORE LOGIC ----------------
 def expected_crowd(location):
     now = datetime.now()
     today = now.strftime("%A")
-    current_hour = now.hour
+    hour = now.hour
 
-    # --- Historical baseline (nearest past hour) ---
-    today_rows = [
-        r for r in baseline_data
-        if r["location"] == location and r["day"] == today
-    ]
-
+    today_rows = [r for r in baseline_data if r["location"] == location and r["day"] == today]
     baseline = 0
+
     if today_rows:
         hours = sorted(int(r["hour"]) for r in today_rows)
-        past_hours = [h for h in hours if h <= current_hour]
-        chosen_hour = max(past_hours) if past_hours else min(hours)
+        chosen = max([h for h in hours if h <= hour], default=min(hours))
+        baseline = next(int(r["baseline_crowd"]) for r in today_rows if int(r["hour"]) == chosen)
 
-        for r in today_rows:
-            if int(r["hour"]) == chosen_hour:
-                baseline = int(r["baseline_crowd"])
-                break
-
-    # --- Registered users (queue demand) ---
     conn = sqlite3.connect("data.db")
     registered = conn.execute(
-        "SELECT COUNT(*) FROM queue WHERE location=?",
-        (location,)
+        "SELECT COUNT(*) FROM queue WHERE location=?", (location,)
     ).fetchone()[0]
     conn.close()
 
     return baseline + registered
 
-# ---------------- WAITING TIME MODEL ----------------
-def estimate_wait_time(crowd):
-    if crowd <= 0:
-        return 0
-    return int((crowd / SERVICE_COUNTERS) * AVG_SERVICE_TIME)
+def wait_time(crowd):
+    return int((crowd / SERVICE_COUNTERS) * AVG_SERVICE_TIME) if crowd > 0 else 0
 
-# ---------------- CROWD LEVEL ----------------
 def crowd_level(crowd):
     if crowd <= 50:
-        return "Low 🟢"
+        return ("Low", "green")
     elif crowd <= 120:
-        return "Moderate 🟡"
+        return ("Moderate", "orange")
     else:
-        return "High 🔴"
+        return ("High", "red")
 
-# ---------------- BEST TIME TO VISIT ----------------
-def best_time_to_visit(location):
-    hourly = {}
-
+def best_time(location):
+    hours = {}
     for r in baseline_data:
         if r["location"] == location:
             h = int(r["hour"])
             c = int(r["baseline_crowd"])
-            hourly[h] = min(hourly.get(h, c), c)
-
-    if not hourly:
+            hours[h] = min(hours.get(h, c), c)
+    if not hours:
         return "Data unavailable"
-
-    best = min(hourly, key=hourly.get)
-    return f"{best}:00 – {best + 1}:00"
+    h = min(hours, key=hours.get)
+    return f"{h}:00 – {h+1}:00"
 
 # ---------------- UI STYLE ----------------
 STYLE = """
 <style>
-body { font-family: Arial; background:#f4f6f8; }
-.container {
-    width: 650px; margin: 60px auto; background:white;
-    padding: 30px; border-radius:10px;
-    box-shadow:0 0 12px rgba(0,0,0,0.15);
+body {
+    font-family: 'Segoe UI', sans-serif;
+    background:#f2f4f8;
+    margin:0;
 }
-h1, h2 { color:#1f4fd8; }
-select, input { padding:8px; margin-top:10px; }
-input[type=submit] {
-    background:#1f4fd8; color:white; border:none;
-    padding:8px 18px; border-radius:5px;
+.container {
+    max-width:900px;
+    margin:60px auto;
+    background:white;
+    padding:40px;
+    border-radius:14px;
+    box-shadow:0 15px 40px rgba(0,0,0,0.08);
+}
+h1 {
+    color:#1f4fd8;
+    font-size:36px;
+}
+h2 {
+    margin-top:0;
+}
+.nav a {
+    margin-right:20px;
+    text-decoration:none;
+    font-weight:600;
+    color:#1f4fd8;
+}
+.hero {
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+}
+.hero-text {
+    max-width:500px;
+}
+.hero p {
+    color:#555;
+    font-size:18px;
+}
+.btn {
+    display:inline-block;
+    margin-top:20px;
+    padding:12px 22px;
+    background:#1f4fd8;
+    color:white;
+    text-decoration:none;
+    border-radius:8px;
+    font-weight:600;
+}
+.card-grid {
+    display:grid;
+    grid-template-columns:repeat(auto-fit, minmax(220px,1fr));
+    gap:20px;
+    margin-top:30px;
+}
+.card {
+    background:#f9fafc;
+    padding:20px;
+    border-radius:12px;
+}
+.badge {
+    padding:6px 14px;
+    border-radius:20px;
+    font-weight:600;
+    color:white;
+    display:inline-block;
+}
+.green { background:#28a745; }
+.orange { background:#f0ad4e; }
+.red { background:#d9534f; }
+select, input {
+    padding:10px;
+    margin-top:10px;
+    width:100%;
 }
 </style>
 """
 
-# ---------------- HOME ----------------
+# ---------------- ROUTES ----------------
 @app.route("/")
 def home():
     clear_old_entries()
     return f"""
     <html><head><title>Q-SMART</title>{STYLE}</head><body>
     <div class="container">
-        <h1>Q-SMART</h1>
-        <p>Smart Crowd Prediction & Queue Management System</p>
-        <a href="/join">Join Queue</a> |
-        <a href="/status">Check Status</a>
+        <div class="hero">
+            <div class="hero-text">
+                <h1>Q-SMART</h1>
+                <p>Smart Crowd Prediction & Queue Management System</p>
+                <a class="btn" href="/join">Join Queue</a>
+                <a class="btn" style="background:#555" href="/status">Check Status</a>
+            </div>
+        </div>
     </div></body></html>
     """
 
-# ---------------- JOIN QUEUE ----------------
 @app.route("/join")
 def join():
     options = "".join(f"<option>{l}</option>" for l in LOCATIONS)
     return f"""
     <html><head>{STYLE}</head><body>
     <div class="container">
-        <h2>Register in Queue</h2>
-        <form action="/add" method="post">
-            <select name="location">{options}</select><br>
-            <input type="submit" value="Register">
+        <h2>Join Queue</h2>
+        <form method="post" action="/add">
+            <select name="location">{options}</select>
+            <input type="submit" value="Register" class="btn">
         </form>
-        <br><a href="/">Back</a>
     </div></body></html>
     """
 
@@ -169,16 +214,14 @@ def add():
     )
     conn.commit()
     conn.close()
-
     return f"""
     <html><head>{STYLE}</head><body>
     <div class="container">
         <h2>Registered Successfully ✅</h2>
-        <a href="/">Home</a>
+        <a class="btn" href="/">Go Home</a>
     </div></body></html>
     """
 
-# ---------------- STATUS PAGE ----------------
 @app.route("/status")
 def status():
     location = request.args.get("location")
@@ -187,26 +230,28 @@ def status():
 
     if location:
         crowd = expected_crowd(location)
+        level, color = crowd_level(crowd)
         output = f"""
-        <p><b>Expected Crowd:</b> {crowd} people</p>
-        <p><b>Crowd Level:</b> {crowd_level(crowd)}</p>
-        <p><b>Estimated Waiting Time:</b> {estimate_wait_time(crowd)} minutes</p>
-        <p><b>Best Time to Visit:</b> {best_time_to_visit(location)}</p>
+        <div class="card-grid">
+            <div class="card"><b>Expected Crowd</b><br><h2>{crowd}</h2></div>
+            <div class="card"><b>Crowd Level</b><br><span class="badge {color}">{level}</span></div>
+            <div class="card"><b>Estimated Waiting Time</b><br><h3>{wait_time(crowd)} min</h3></div>
+            <div class="card"><b>Best Time to Visit</b><br><h3>{best_time(location)}</h3></div>
+        </div>
         """
 
     return f"""
     <html><head>{STYLE}</head><body>
     <div class="container">
-        <h2>Queue Status</h2>
+        <h2>Check Queue Status</h2>
         <form method="get">
             <select name="location">{options}</select>
-            <input type="submit" value="Check">
+            <input type="submit" value="Check Status" class="btn">
         </form>
-        <br>{output}
-        <br><a href="/">Back</a>
+        {output}
     </div></body></html>
     """
 
-# ---------------- RUN ----------------
 if __name__ == "__main__":
-    app.run()
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port)
