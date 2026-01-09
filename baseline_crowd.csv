@@ -1,0 +1,208 @@
+location,day,hour,baseline_crowd
+Government Hospital,Monday,10,70
+Government Hospital,Tuesday,10,65
+Government Hospital,Wednesday,10,68
+Government Hospital,Thursday,10,66
+Government Hospital,Friday,10,75
+Government Hospital,Saturday,11,55
+Government Hospital,Sunday,11,40
+
+Private Hospital,Monday,11,75
+Private Hospital,Tuesday,11,70
+Private Hospital,Wednesday,11,72
+Private Hospital,Thursday,11,74
+Private Hospital,Friday,11,80
+Private Hospital,Saturday,11,60
+Private Hospital,Sunday,11,50
+
+Primary Health Centre,Monday,10,45
+Primary Health Centre,Tuesday,10,42
+Primary Health Centre,Wednesday,10,44
+Primary Health Centre,Thursday,10,43
+Primary Health Centre,Friday,10,48
+Primary Health Centre,Saturday,10,40
+Primary Health Centre,Sunday,10,35
+
+Ration Shop,Monday,9,80
+Ration Shop,Tuesday,9,75
+Ration Shop,Wednesday,9,78
+Ration Shop,Thursday,9,76
+Ration Shop,Friday,9,85
+Ration Shop,Saturday,9,90
+Ration Shop,Sunday,9,70
+
+Supermarket,Monday,18,95
+Supermarket,Tuesday,18,90
+Supermarket,Wednesday,18,92
+Supermarket,Thursday,18,95
+Supermarket,Friday,18,120
+Supermarket,Saturday,18,150
+Supermarket,Sunday,18,140
+
+Shopping Complex,Monday,17,100
+Shopping Complex,Tuesday,17,95
+Shopping Complex,Wednesday,17,98
+Shopping Complex,Thursday,17,100
+Shopping Complex,Friday,17,130
+Shopping Complex,Saturday,17,160
+Shopping Complex,Sunday,17,150
+
+Shopping Mall,Monday,18,130
+Shopping Mall,Tuesday,18,125
+Shopping Mall,Wednesday,18,128
+Shopping Mall,Thursday,18,135
+Shopping Mall,Friday,18,180
+Shopping Mall,Saturday,18,220
+Shopping Mall,Sunday,18,200
+
+Restaurant,Monday,20,90
+Restaurant,Tuesday,20,85
+Restaurant,Wednesday,20,88
+Restaurant,Thursday,20,95
+Restaurant,Friday,20,120
+Restaurant,Saturday,20,150
+Restaurant,Sunday,20,140
+
+Hotel,Monday,12,70
+Hotel,Tuesday,12,68
+Hotel,Wednesday,12,70
+Hotel,Thursday,12,72
+Hotel,Friday,12,85
+Hotel,Saturday,12,100
+Hotel,Sunday,12,95
+
+Bus Stand,Monday,8,170
+Bus Stand,Tuesday,8,165
+Bus Stand,Wednesday,8,168
+Bus Stand,Thursday,8,170
+Bus Stand,Friday,8,190
+Bus Stand,Saturday,10,150
+Bus Stand,Sunday,10,140
+
+Railway Station,Monday,7,200
+Railway Station,Tuesday,7,195
+Railway Station,Wednesday,7,198
+Railway Station,Thursday,7,200
+Railway Station,Friday,7,220
+Railway Station,Saturday,11,170
+Railway Station,Sunday,11,160
+
+Metro Station,Monday,8,180
+Metro Station,Tuesday,8,175
+Metro Station,Wednesday,8,178
+Metro Station,Thursday,8,180
+Metro Station,Friday,8,200
+Metro Station,Saturday,10,150
+Metro Station,Sunday,10,145
+
+Airport,Monday,6,160
+Airport,Tuesday,6,155
+Airport,Wednesday,6,158
+Airport,Thursday,6,160
+Airport,Friday,6,190
+Airport,Saturday,12,170
+Airport,Sunday,12,165
+
+Post Office,Monday,10,65
+Post Office,Tuesday,10,60
+Post Office,Wednesday,10,62
+Post Office,Thursday,10,64
+Post Office,Friday,10,70
+Post Office,Saturday,10,40
+Post Office,Sunday,10,0
+
+Bank,Monday,11,130
+Bank,Tuesday,11,125
+Bank,Wednesday,11,128
+Bank,Thursday,11,130
+Bank,Friday,11,110
+Bank,Saturday,11,60
+Bank,Sunday,11,0
+
+ATM,Monday,18,60
+ATM,Tuesday,18,55
+ATM,Wednesday,18,58
+ATM,Thursday,18,60
+ATM,Friday,18,70
+ATM,Saturday,18,85
+ATM,Sunday,18,80
+
+Police Station,Monday,12,50
+Police Station,Tuesday,12,48
+Police Station,Wednesday,12,50
+Police Station,Thursday,12,49
+Police Station,Friday,12,55
+Police Station,Saturday,12,45
+Police Station,Sunday,12,40
+
+Municipal Office,Monday,11,90
+Municipal Office,Tuesday,11,88
+Municipal Office,Wednesday,11,90
+Municipal Office,Thursday,11,85
+Municipal Office,Friday,11,80
+Municipal Office,Saturday,11,40
+Municipal Office,Sunday,11,0
+
+Village Office,Monday,10,55
+Village Office,Tuesday,10,52
+Village Office,Wednesday,10,54
+Village Office,Thursday,10,53
+Village Office,Friday,10,50
+Village Office,Saturday,10,35
+Village Office,Sunday,10,0
+
+Taluk Office,Monday,11,80
+Taluk Office,Tuesday,11,78
+Taluk Office,Wednesday,11,80
+Taluk Office,Thursday,11,75
+Taluk Office,Friday,11,70
+Taluk Office,Saturday,11,40
+Taluk Office,Sunday,11,0
+
+Fuel Station,Monday,8,70
+Fuel Station,Tuesday,8,68
+Fuel Station,Wednesday,8,70
+Fuel Station,Thursday,8,72
+Fuel Station,Friday,8,85
+Fuel Station,Saturday,8,90
+Fuel Station,Sunday,8,80
+
+Temple,Monday,6,60
+Temple,Tuesday,6,58
+Temple,Wednesday,6,60
+Temple,Thursday,6,62
+Temple,Friday,6,90
+Temple,Saturday,7,130
+Temple,Sunday,7,170
+
+Mosque,Monday,13,50
+Mosque,Tuesday,13,48
+Mosque,Wednesday,13,50
+Mosque,Thursday,13,52
+Mosque,Friday,13,120
+Mosque,Saturday,13,70
+Mosque,Sunday,13,65
+
+Church,Monday,8,40
+Church,Tuesday,8,38
+Church,Wednesday,8,40
+Church,Thursday,8,42
+Church,Friday,8,45
+Church,Saturday,8,60
+Church,Sunday,8,130
+
+Public Library,Monday,16,45
+Public Library,Tuesday,16,43
+Public Library,Wednesday,16,45
+Public Library,Thursday,16,47
+Public Library,Friday,16,50
+Public Library,Saturday,16,55
+Public Library,Sunday,16,30
+
+Examination Centre,Monday,9,180
+Examination Centre,Tuesday,9,175
+Examination Centre,Wednesday,9,178
+Examination Centre,Thursday,9,180
+Examination Centre,Friday,9,200
+Examination Centre,Saturday,9,120
+Examination Centre,Sunday,9,0
